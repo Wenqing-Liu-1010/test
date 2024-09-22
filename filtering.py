@@ -2,7 +2,6 @@ import pandas as pd
 import os
 import torch
 
-
 # Dataset names
 splits = ['train', 'dev', 'test']  # Modify based on actual dataset names
 
@@ -15,12 +14,21 @@ for split in splits:
     file_path = f'/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/{split}_processed.jsonl'
     data = pd.read_json(file_path, lines=True)
 
-    # Create a boolean mask to check if the first five characters of neutral_id match supporter_id or defeater_id
-    mask = (data['neutral_id'].str[:5] == data['supporter_id'].str[:5]) | \
-           (data['neutral_id'].str[:5] == data['defeater_id'].str[:5])
+    # Print the shape before filtering
+    print(f"{split} dataset shape before filtering: {data.shape}")
+
+    # Extract neutral_id_prefix
+    data['neutral_id_prefix'] = data['neutral_id'].str.extract(r'([^_]*_[^_]*)')[0]
+
+    # Create a boolean mask to check if neutral_id_prefix matches supporter_id or defeater_id
+    mask = (data['neutral_id_prefix'] == data['supporter_id']) | \
+           (data['neutral_id_prefix'] == data['defeater_id'])
 
     # Filter the data to keep only the rows that satisfy the condition
     filtered_data = data[mask]
+
+    # Print the shape after filtering
+    print(f"{split} dataset shape after filtering: {filtered_data.shape}")
 
     # Save the filtered data to a new file in a directory you have permission for
     output_file_path = f'/mnt/lia/scratch/wenqliu/evaluation/{split}_processed_filtered.jsonl'
