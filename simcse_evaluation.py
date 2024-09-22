@@ -1,13 +1,7 @@
-import pandas as pd
-import numpy as np
 import torch
-import tensorflow_text
-import tensorflow_hub as hub
-import tensorflow as tf
-from angle_emb import AnglE, Prompts
+from angle_emb import AnglE
 from angle_emb.utils import cosine_similarity
-from transformers import AutoModel, AutoTokenizer
-from sentence_transformers import SentenceTransformer
+import pandas as pd
 
 class Metrics:
     def __init__(self, op_sd, op_sn, op_dn):
@@ -38,16 +32,20 @@ class Metrics:
         OR_value = self.op_sd / np.maximum(self.op_sn, self.op_dn)
         return OR_value.mean()
 
+# 读取数据
+file_path = '/content/test_processed.jsonl'
+data = pd.read_json(file_path, lines=True)
+
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
+            # 确保 model_name 不为 None
             if model_name is None:
                 raise ValueError("model_name cannot be None")
             self.model = AnglE.from_pretrained(model_name, pooling_strategy=pooling_strategy).cuda()
 
         def encode_texts(self, texts):
             return self.model.encode(texts)
-
     class SimCSEModel:
         def __init__(self, model_name='princeton-nlp/sup-simcse-bert-base-uncased'):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -55,84 +53,28 @@ class TextSimilarity:
 
         def encode_texts(self, texts):
             inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-            inputs = {k: v.cuda() for k, v in inputs.items()}  # 确保输入张量在 GPU 上
             with torch.no_grad():
                 embeddings = self.model(**inputs, return_dict=True).pooler_output
             return embeddings
-
-    class USEModel:
-        def __init__(self):
-            self.embedder = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
-
-        def encode_texts(self, texts):
-            embeddings = self.embedder(texts)
-            return embeddings
-
-    class SBERTModel:
-        def __init__(self, model_name='all-MiniLM-L6-v2'):
-            self.model = SentenceTransformer(model_name)
-
-        def encode_texts(self, texts):
-            return self.model.encode(texts)
-
-    class LLMModel:
-        def __init__(self):
-            self.model = AnglE.from_pretrained(
-                'NousResearch/Llama-2-7b-hf',
-                pretrained_lora_path='SeanLee97/angle-llama-7b-nli-v2',
-                pooling_strategy='last',
-                is_llm=True,
-                torch_dtype=torch.float16,
-                offload_dir='path/to/offload_dir'
-            ).cuda()
-
-        def encode_texts(self, texts):
-            prompts = [Prompts.A] * len(texts)
-            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompts)
-            return doc_vecs
-
-    class CoSENTModel:
-        def __init__(self, model_name='shibing624/text2vec-base-multilingual'):
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModel.from_pretrained(model_name)
-
-        def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-            inputs = {k: v.cuda() for k, v in inputs.items()}  # 确保输入张量在 GPU 上
-            with torch.no_grad():
-                doc_vecs = self.model(**inputs).last_hidden_state.mean(dim=1)
-            return doc_vecs
 
     def __init__(self, model_class='aoe', model_name=None):
         if model_class == 'aoe':
             self.model = self.AOEModel(model_name=model_name)
         elif model_class == 'simcse':
             self.model = self.SimCSEModel(model_name=model_name)
-        elif model_class == 'use':
-            self.model = self.USEModel()
-        elif model_class == 'sbert':
-            self.model = self.SBERTModel(model_name=model_name)
-        elif model_class == 'llm':
-            self.model = self.LLMModel()
-        elif model_class == 'cosent':
-            self.model = self.CoSENTModel(model_name=model_name)
-        else:
-            raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'use', 'sbert', 'llm', or 'cosent'.")
+
 
     def calculate_cosine_similarity(self, vec1, vec2):
         return cosine_similarity(vec1, vec2)
-
-    def calculate_opposition_degree(self, similarity):
-        return 1 - similarity
 
     def __call__(self, data):
         results = []
         for index in range(min(100, len(data))):  # 取前100条数据
             row = data.iloc[index]
             context = row['context_text']
-            supporter = context + " " + row['supporter_text']
-            defeater = context + " " + row['defeater_text']
-            neutral = context + " " + row['neutral_text']
+            supporter = context + " " + row['supporter_text']  # 连接上下文和支持者
+            defeater = context + " " + row['defeater_text']  # 连接上下文和反对者
+            neutral = context + " " + row['neutral_text']      # 连接上下文和中立文本
 
             texts = [supporter, defeater, neutral]
             doc_vecs = self.model.encode_texts(texts)
@@ -149,14 +91,13 @@ class TextSimilarity:
             })
 
         return results
-
 def main():
     # 读取数据
-    file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'
+    file_path = '/content/test_processed.jsonl'
     data = pd.read_json(file_path, lines=True)
 
     # 创建相似度计算器并计算结果
-    similarity_calculator = TextSimilarity(model_class='simcse', model_name='princeton-nlp/sup-simcse-bert-base-uncased')
+    similarity_calculator = TextSimilarity(model_class = 'simcse',model_name='princeton-nlp/sup-simcse-bert-base-uncased')
     similarity_results = similarity_calculator(data)
 
     # 转换为 DataFrame
@@ -169,9 +110,9 @@ def main():
 
     # 计算 DCF、DOW 等指标
     metrics_calculator = Metrics(
-        op_sd=results_df['neutral_supporter_similarity'].values,
-        op_sn=results_df['neutral_defeater_similarity'].values,
-        op_dn=results_df['supporter_defeater_similarity'].values
+        op_sd=results_df['neutral_supporter_similarity'].values,  # 已是 NumPy 数组
+        op_sn=results_df['neutral_defeater_similarity'].values,  # 已是 NumPy 数组
+        op_dn=results_df['supporter_defeater_similarity'].values   # 已是 NumPy 数组
     )
 
     dcf_value = metrics_calculator.DCF()
