@@ -102,15 +102,15 @@ class TextSimilarity:
 
 def main():
     # 读取数据
-    file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'  # 确保路径正确
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl''  # 确保路径正确
     data = pd.read_json(file_path, lines=True)
 
     # 创建相似度计算器并计算结果
     similarity_calculator = TextSimilarity(model_class='simcse', model_name='princeton-nlp/sup-simcse-bert-base-uncased')
-    updated_data = similarity_calculator(data, batch_size=2048)
+    updated_data = similarity_calculator(data, batch_size=512)
 
     # 保存更新后的数据
-    output_file_path = '/mnt/lia/scratch/wenqliu/evaluation/simcse_bert.jsonl'  # 设定保存路径
+    output_file_path = '/mnt/lia/scratch/wenqliu/evaluation/existing_models/simcse_bert.jsonl'  # 设定保存路径
     updated_data.to_json(output_file_path, orient='records', lines=True)
     print(f"更新后的数据已保存到: {output_file_path}")
 
