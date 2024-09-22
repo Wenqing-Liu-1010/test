@@ -50,4 +50,8 @@ class TextSimilarity:
             })
 
         return results
-print(results)
+
+
+similarity_calculator = TextSimilarity()
+similarity_results = similarity_calculator(data)
+print(similarity_results)
