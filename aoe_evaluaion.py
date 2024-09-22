@@ -1,23 +1,24 @@
 import torch
 from angle_emb import AnglE
 from angle_emb.utils import cosine_similarity
-
 import pandas as pd
 
+# 读取数据
 file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'
 data = pd.read_json(file_path, lines=True)
-
-
 
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
+            # 确保 model_name 不为 None
+            if model_name is None:
+                raise ValueError("model_name cannot be None")
             self.model = AnglE.from_pretrained(model_name, pooling_strategy=pooling_strategy).cuda()
 
         def encode_texts(self, texts):
             return self.model.encode(texts)
 
-    def __init__(self, model_class='aoe', model_name=None):
+    def __init__(self, model_class='aoe', model_name='WhereIsAI/UAE-Large-V1'):
         if model_class == 'aoe':
             self.model = self.AOEModel(model_name=model_name)
         else:
@@ -51,7 +52,7 @@ class TextSimilarity:
 
         return results
 
-
+# 创建相似度计算器并计算结果
 similarity_calculator = TextSimilarity()
 similarity_results = similarity_calculator(data)
 print(similarity_results)
