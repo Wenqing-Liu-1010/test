@@ -148,7 +148,7 @@ def main():
 
     # Define models and their corresponding names
     models = [
-        ('aoe', 'WhereIsAI/UAE-Large-V1'),
+        # ('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('sbert', 'all-MiniLM-L6-v2'),
         ('llm', None),  # LLM does not require a model name
