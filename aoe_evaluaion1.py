@@ -4,6 +4,7 @@ from angle_emb.utils import cosine_similarity
 import pandas as pd
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
+
 class Metrics:
     def __init__(self, op_sd, op_sn, op_dn):
         self.op_sd = op_sd
@@ -36,20 +37,20 @@ class Metrics:
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
-            # 确保 model_name 不为 None
             if model_name is None:
                 raise ValueError("model_name cannot be None")
             self.model = AnglE.from_pretrained(model_name, pooling_strategy=pooling_strategy).cuda()
 
         def encode_texts(self, texts):
             return self.model.encode(texts)
+
     class SimCSEModel:
         def __init__(self, model_name='princeton-nlp/sup-simcse-bert-base-uncased'):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModel.from_pretrained(model_name)
+            self.model = AutoModel.from_pretrained(model_name).cuda()  # 移到 GPU
 
         def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to('cuda')
             with torch.no_grad():
                 embeddings = self.model(**inputs, return_dict=True).pooler_output
             return embeddings
@@ -60,59 +61,65 @@ class TextSimilarity:
         elif model_class == 'simcse':
             self.model = self.SimCSEModel(model_name=model_name)
 
-
     def calculate_cosine_similarity(self, vec1, vec2):
         return cosine_similarity(vec1, vec2)
 
-    def __call__(self, data):
+    def __call__(self, data, batch_size=32):
         results = []
-        for index in range(len(data)):
-            row = data.iloc[index]
-            context = row['context_text']
-            supporter = context + " " + row['supporter_text']  # 连接上下文和支持者
-            defeater = context + " " + row['defeater_text']  # 连接上下文和反对者
-            neutral = context + " " + row['neutral_text']      # 连接上下文和中立文本
+        for start in range(0, len(data), batch_size):
+            end = min(start + batch_size, len(data))
+            batch = data.iloc[start:end]
 
-            texts = [supporter, defeater, neutral]
-            doc_vecs = self.model.encode_texts(texts)
+            for index in range(len(batch)):
+                row = batch.iloc[index]
+                context = row['context_text']
+                supporter = context + " " + row['supporter_text']
+                defeater = context + " " + row['defeater_text']
+                neutral = context + " " + row['neutral_text']
 
-            # 计算相似度
-            similarity_neutral_supporter = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[0])  # neutral vs supporter
-            similarity_neutral_defeater = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[1])  # neutral vs defeater
-            similarity_supporter_defeater = self.calculate_cosine_similarity(doc_vecs[0], doc_vecs[1])  # supporter vs defeater
+                texts = [supporter, defeater, neutral]
+                doc_vecs = self.model.encode_texts(texts)
 
-            results.append({
-                "neutral_supporter_similarity": similarity_neutral_supporter,
-                "neutral_defeater_similarity": similarity_neutral_defeater,
-                "supporter_defeater_similarity": similarity_supporter_defeater,
-            })
+                # 计算相似度
+                similarity_neutral_supporter = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[0])  # neutral vs supporter
+                similarity_neutral_defeater = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[1])  # neutral vs defeater
+                similarity_supporter_defeater = self.calculate_cosine_similarity(doc_vecs[0], doc_vecs[1])  # supporter vs defeater
 
-        return results
+                results.append({
+                    "neutral_supporter_similarity": similarity_neutral_supporter.item(),  # 确保是标量
+                    "neutral_defeater_similarity": similarity_neutral_defeater.item(),
+                    "supporter_defeater_similarity": similarity_supporter_defeater.item(),
+                })
+
+        # 将计算结果转换为 DataFrame
+        results_df = pd.DataFrame(results)
+
+        # 将计算得到的相似度值放回原数据集中
+        for column in results_df.columns:
+            data[column] = results_df[column].values
+
+        return data
+
 def main():
     # 读取数据
-    file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'
+    file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'  # 确保路径正确
     data = pd.read_json(file_path, lines=True)
 
-    # 随机打乱数据
-    data = data.sample(frac=1, random_state=42).reset_index(drop=True)  # frac=1 表示返回所有行
 
     # 创建相似度计算器并计算结果
-    similarity_calculator = TextSimilarity(model_class = 'aoe',model_name='WhereIsAI/UAE-Large-V1')
-    similarity_results = similarity_calculator(data)
+    similarity_calculator = TextSimilarity(model_class='aoe', model_name='WhereIsAI/UAE-Large-V1')
+    updated_data = similarity_calculator(data, batch_size=32)
 
-    # 转换为 DataFrame
-    results_df = pd.DataFrame(similarity_results)
-
-    # 计算每列的平均值
-    averages = results_df.mean()
-    print("每一列的平均值:")
-    print(averages)
+    # 保存更新后的数据
+    output_file_path = '/mnt/lia/scratch/wenqliu/evaluation/aoe_bert.jsonl'  # 设定保存路径
+    updated_data.to_json(output_file_path, orient='records', lines=True)
+    print(f"更新后的数据已保存到: {output_file_path}")
 
     # 计算 DCF、DOW 等指标
     metrics_calculator = Metrics(
-        op_sd=results_df['neutral_supporter_similarity'].values,  # 已是 NumPy 数组
-        op_sn=results_df['neutral_defeater_similarity'].values,  # 已是 NumPy 数组
-        op_dn=results_df['supporter_defeater_similarity'].values   # 已是 NumPy 数组
+        op_sd=updated_data['neutral_supporter_similarity'].values,
+        op_sn=updated_data['neutral_defeater_similarity'].values,
+        op_dn=updated_data['supporter_defeater_similarity'].values
     )
 
     dcf_value = metrics_calculator.DCF()
