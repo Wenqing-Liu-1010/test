@@ -50,7 +50,7 @@ class TextSimilarity:
             self.model = AutoModel.from_pretrained(model_name).cuda()  # 移到 GPU
 
         def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to('cuda')
+            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to('cuda')  # 移到 GPU
             with torch.no_grad():
                 embeddings = self.model(**inputs, return_dict=True).pooler_output
             return embeddings
@@ -86,9 +86,9 @@ class TextSimilarity:
                 similarity_supporter_defeater = self.calculate_cosine_similarity(doc_vecs[0], doc_vecs[1])  # supporter vs defeater
 
                 results.append({
-                    "neutral_supporter_similarity": similarity_neutral_supporter.item(),  # 确保是标量
-                    "neutral_defeater_similarity": similarity_neutral_defeater.item(),
-                    "supporter_defeater_similarity": similarity_supporter_defeater.item(),
+                    "neutral_supporter_similarity": similarity_neutral_supporter.item() if hasattr(similarity_neutral_supporter, 'item') else similarity_neutral_supporter,
+                    "neutral_defeater_similarity": similarity_neutral_defeater.item() if hasattr(similarity_neutral_defeater, 'item') else similarity_neutral_defeater,
+                    "supporter_defeater_similarity": similarity_supporter_defeater.item() if hasattr(similarity_supporter_defeater, 'item') else similarity_supporter_defeater,
                 })
 
         # 将计算结果转换为 DataFrame
@@ -104,7 +104,6 @@ def main():
     # 读取数据
     file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'  # 确保路径正确
     data = pd.read_json(file_path, lines=True)
-
 
     # 创建相似度计算器并计算结果
     similarity_calculator = TextSimilarity(model_class='aoe', model_name='WhereIsAI/UAE-Large-V1')
