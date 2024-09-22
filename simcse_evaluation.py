@@ -94,7 +94,7 @@ def main():
     data = pd.read_json(file_path, lines=True)
 
     # 随机打乱数据
-    data = data.sample(frac=1, random_state=42).reset_index(drop=True)  # frac=1 表示返回所有行
+    data = data.sample(frac=1, random_state=4).reset_index(drop=True)  # frac=1 表示返回所有行
 
     # 创建相似度计算器并计算结果
     similarity_calculator = TextSimilarity(model_class = 'simcse',model_name='princeton-nlp/sup-simcse-bert-base-uncased')
