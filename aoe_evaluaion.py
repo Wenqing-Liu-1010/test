@@ -2,6 +2,13 @@ import torch
 from angle_emb import AnglE
 from angle_emb.utils import cosine_similarity
 
+import pandas as pd
+
+file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'
+data = pd.read_json(file_path, lines=True)
+
+
+
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
@@ -43,3 +50,4 @@ class TextSimilarity:
             })
 
         return results
+print(results)
