@@ -17,6 +17,13 @@ for split in splits:
     # Print the shape before filtering
     print(f"{split} dataset shape before filtering: {data.shape}")
 
+    # Check if ". Hypothesis:" exists and add "." if needed
+    mask_hypothesis = data['context_text'].str.contains(r'\. Hypothesis:')
+    data.loc[~mask_hypothesis, 'context_text'] = data.loc[~mask_hypothesis, 'context_text'].str.replace('Hypothesis:', '. Hypothesis:')
+
+    # Replace " . Hypothesis" with ". Hypothesis"
+    data['context_text'] = data['context_text'].str.replace(' . Hypothesis', '. Hypothesis')
+
     # Extract neutral_id_prefix
     data['neutral_id_prefix'] = data['neutral_id'].str.extract(r'([^_]*_[^_]*)')[0]
 
@@ -35,5 +42,3 @@ for split in splits:
     filtered_data.to_json(output_file_path, orient='records', lines=True)
     print(f"{split} dataset has been processed, results saved to: {output_file_path}")
 
-    # If using a model, make sure to load it to the correct device
-    # model = YourModelClass().to(device)  # Example of loading a model to GPU
