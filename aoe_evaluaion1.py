@@ -66,7 +66,7 @@ class TextSimilarity:
 
     def __call__(self, data):
         results = []
-        for index in range(min(1000, len(data))):  # 取前100条数据
+        for index in range(len(data)):
             row = data.iloc[index]
             context = row['context_text']
             supporter = context + " " + row['supporter_text']  # 连接上下文和支持者
