@@ -17,10 +17,7 @@ for split in splits:
     # Filter the data to keep only the rows that satisfy the condition
     filtered_data = data[mask]
 
-    # Save the filtered results into a new column
-    data['filtered'] = filtered_data  # You can choose other ways to store, such as a separate DataFrame or column
-
-    # Save the updated data
+    # Save the filtered data to a new file
     output_file_path = f'/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/{split}_processed_filtered.jsonl'
-    data.to_json(output_file_path, orient='records', lines=True)
+    filtered_data.to_json(output_file_path, orient='records', lines=True)
     print(f"{split} dataset has been processed, results saved to: {output_file_path}")
