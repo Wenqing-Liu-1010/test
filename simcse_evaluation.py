@@ -2,7 +2,7 @@ import torch
 from angle_emb import AnglE
 from angle_emb.utils import cosine_similarity
 import pandas as pd
-
+from transformers import AutoModel, AutoTokenizer
 class Metrics:
     def __init__(self, op_sd, op_sn, op_dn):
         self.op_sd = op_sd
