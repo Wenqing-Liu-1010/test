@@ -54,7 +54,8 @@ class TextSimilarity:
             self.model = AutoModel.from_pretrained(model_name)
 
         def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").cuda()
+            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+            inputs = {k: v.cuda() for k, v in inputs.items()}  # 确保输入张量在 GPU 上
             with torch.no_grad():
                 embeddings = self.model(**inputs, return_dict=True).pooler_output
             return embeddings
@@ -96,7 +97,8 @@ class TextSimilarity:
             self.model = AutoModel.from_pretrained(model_name)
 
         def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").cuda()
+            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+            inputs = {k: v.cuda() for k, v in inputs.items()}  # 确保输入张量在 GPU 上
             with torch.no_grad():
                 doc_vecs = self.model(**inputs).last_hidden_state.mean(dim=1)
             return doc_vecs
