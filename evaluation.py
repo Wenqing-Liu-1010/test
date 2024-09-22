@@ -105,7 +105,7 @@ class TextSimilarity:
             raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm', or 'use'.")
 
     def calculate_cosine_similarity(self, vec1, vec2):
-        return cosine_similarity(vec1, vec2)
+        return cosine_similarity(vec1.cpu(), vec2.cpu())
 
     def __call__(self, data, batch_size=32):
         results = []
