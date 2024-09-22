@@ -32,10 +32,6 @@ class Metrics:
         OR_value = self.op_sd / np.maximum(self.op_sn, self.op_dn)
         return OR_value.mean()
 
-# 读取数据
-file_path = '/content/test_processed.jsonl'
-data = pd.read_json(file_path, lines=True)
-
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
@@ -93,9 +89,8 @@ class TextSimilarity:
         return results
 def main():
     # 读取数据
-    file_path = '/content/test_processed.jsonl'
+    file_path = '/mnt/lia/scratch/yifeng/dichotomous-score/data/defeasible_snli/test_processed.jsonl'
     data = pd.read_json(file_path, lines=True)
-
     # 创建相似度计算器并计算结果
     similarity_calculator = TextSimilarity(model_class = 'simcse',model_name='princeton-nlp/sup-simcse-bert-base-uncased')
     similarity_results = similarity_calculator(data)
