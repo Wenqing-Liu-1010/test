@@ -102,7 +102,7 @@ class TextSimilarity:
 
 def main():
     # 读取数据
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl''  # 确保路径正确
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl'  # 确保路径正确
     data = pd.read_json(file_path, lines=True)
 
     # 创建相似度计算器并计算结果
