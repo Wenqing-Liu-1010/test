@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
-from angle_emb import AnglE
+from angle_emb import AnglE, Prompts
 
 
 # 定义 Metrics 类
@@ -107,7 +107,7 @@ class TextSimilarity:
 
 
         def encode_texts(self, texts):
-            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompt.A)
+            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=Prompts.A)
             return torch.tensor(doc_vecs).to('cuda')
 
     class USEModel:
