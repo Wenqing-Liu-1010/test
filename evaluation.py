@@ -8,6 +8,9 @@ from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
 from angle_emb import AnglE, Prompts
+from huggingface_hub import login
+
+login("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")
 
 
 # 定义 Metrics 类
