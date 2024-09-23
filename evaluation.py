@@ -232,7 +232,7 @@ def main():
     # 定义模型及其对应的名称
     models = [
         ('gte', None),
-        ('aoe', 'WhereIsAI/UAE-Large-V1'),
+        #('aoe', 'WhereIsAI/UAE-Large-V1'),
         #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         #('sbert', 'all-MiniLM-L6-v2'),
         #('llm', None),  # LLM does not require a model name
