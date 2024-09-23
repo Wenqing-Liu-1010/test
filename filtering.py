@@ -11,7 +11,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Loop through each dataset
 for split in splits:
     # Read the data
-    file_path = f'/mnt/lia/scratch/yifeng/dichotomous-score/data/delta_causal/{split}_processed.jsonl'
+    file_path = f'/mnt/lia/scratch/yifeng/dichotomous-score/data/delta_causal/{split}_processed_score_gt_07.jsonl'
     data = pd.read_json(file_path, lines=True)
 
     # Print the shape before filtering
