@@ -105,7 +105,7 @@ class TextSimilarity:
             embeddings = self.model.encode(texts, batch_size=batch_size, convert_to_tensor=True, show_progress_bar=False)
             return embeddings.cpu()
 
-    class LLMModel:
+    class LLMModel_7B:
         def __init__(self):
             self.model = AnglE.from_pretrained(
                 'NousResearch/Llama-2-7b-hf',
@@ -121,6 +121,23 @@ class TextSimilarity:
             doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=Prompts.A)
             return torch.tensor(doc_vecs).to('cuda')
 
+    class LLMModel_13B:
+        def __init__(self):
+            self.model = AnglE.from_pretrained(
+                'NousResearch/Llama-2-13b-hf',
+                pretrained_lora_path='SeanLee97/angle-llama-13b-nli',
+                pooling_strategy='last',
+                is_llm=True,
+                torch_dtype=torch.float16,
+                offload_dir='path/to/offload_dir'
+            ).cuda()
+
+
+        def encode_texts(self, texts):
+            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=Prompts.A)
+            return torch.tensor(doc_vecs).to('cuda')
+
+    
     class USEModel:
         def __init__(self):
             import tensorflow as tf
@@ -161,14 +178,16 @@ class TextSimilarity:
             self.model = self.SimCSEModel(model_name=model_name)
         elif model_class == 'sbert':
             self.model = self.SBERTModel(model_name=model_name)
-        elif model_class == 'llm':
-            self.model = self.LLMModel()
+        elif model_class == 'llm_7B':
+            self.model = self.LLMModel_7B()
+        elif model_class == 'llm_13B':
+            self.model = self.LLMModel_13B()
         elif model_class == 'use':
             self.model = self.USEModel()
         elif model_class == 'cosent':
             self.model = self.CoSENTModel(model_name=model_name)
         else:
-            raise ValueError("Invalid model_class. Choose 'gte', 'aoe', 'simcse', 'sbert', 'llm', 'use', or 'cosent'.")
+            raise ValueError("Invalid model_class. Choose 'gte', 'aoe', 'simcse', 'sbert', 'llm_7B', 'llm_13B','use', or 'cosent'.")
 
 
     def calculate_cosine_similarity(self, vec1, vec2):
@@ -235,8 +254,9 @@ def main():
         #('aoe', 'WhereIsAI/UAE-Large-V1'),
         #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         #('sbert', 'all-MiniLM-L6-v2'),
-        #('llm', None),  # LLM does not require a model name
-        ('use', None),
+        #('llm_7B', None),  # LLM does not require a model name
+        ('llm_13B', None),  # LLM does not require a model name
+        #('use', None),
         #('cosent', 'shibing624/text2vec-base-multilingual'),
     ]
 
