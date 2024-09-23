@@ -106,8 +106,7 @@ class TextSimilarity:
             self.model.eval()
 
         def encode_texts(self, texts):
-            prompts = [Prompts.A] * len(texts)  # Ensure Prompts class is correctly defined
-            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompts)
+            doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompt.A)
             return torch.tensor(doc_vecs).to('cuda')
 
     class USEModel:
