@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
+from angle_emb import AnglE
 
 
 # 定义 Metrics 类
