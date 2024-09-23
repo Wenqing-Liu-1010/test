@@ -204,7 +204,7 @@ def main():
     # 定义 DataLoader
     dataloader = DataLoader(
         dataset,
-        batch_size=128,       # 根据您的 GPU 内存调整批次大小
+        batch_size=32,       # 根据您的 GPU 内存调整批次大小
         shuffle=False,        # 如果需要打乱数据，可以设置为 True
         num_workers=4,        # 根据您的 CPU 核心数调整
         pin_memory=True if torch.cuda.is_available() else False  # 如果使用 GPU，加快数据传输速度
