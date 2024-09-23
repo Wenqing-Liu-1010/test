@@ -7,6 +7,10 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
+import nltk
+
+# 确保 NLTK 分词器可用
+nltk.download('punkt')
 
 # 定义 Metrics 类
 class Metrics:
@@ -111,7 +115,8 @@ class TextSimilarity:
 
     class USEModel:
         def __init__(self):
-            # Load Universal Sentence Encoder model
+            import tensorflow as tf
+            import tensorflow_text  # 确保导入顺序正确
             self.embedder = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
             # TensorFlow Hub models run on CPU; to leverage GPU, consider using a different model
 
@@ -203,7 +208,7 @@ def main():
     # 定义 DataLoader
     dataloader = DataLoader(
         dataset,
-        batch_size=512,       # 根据您的 GPU 内存调整批次大小
+        batch_size=128,       # 根据您的 GPU 内存调整批次大小
         shuffle=False,        # 如果需要打乱数据，可以设置为 True
         num_workers=4,        # 根据您的 CPU 核心数调整
         pin_memory=True if torch.cuda.is_available() else False  # 如果使用 GPU，加快数据传输速度
@@ -211,52 +216,58 @@ def main():
 
     # 定义模型及其对应的名称
     models = [
-       #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
+        ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('use', None),
         ('cosent', 'shibing624/text2vec-base-multilingual'),
+        # 添加更多模型，如下所示：
         # ('aoe', 'WhereIsAI/UAE-Large-V1'),
-        ('sbert', 'all-MiniLM-L6-v2'),
+        # ('sbert', 'all-MiniLM-L6-v2'),
         # ('llm', None),  # LLM 不需要模型名称
     ]
 
     # 遍历每个模型，计算相似度
     for model_class, model_name in models:
         print(f"Using {model_class} model...")
-        similarity_calculator = TextSimilarity(model_class=model_class, model_name=model_name)
-        results_df = similarity_calculator(dataloader)
+        try:
+            similarity_calculator = TextSimilarity(model_class=model_class, model_name=model_name)
+            results_df = similarity_calculator(dataloader)
 
-        # 将结果添加到原始数据中
-        dataset.data[f'neutral_supporter_similarity_{model_class}'] = results_df['neutral_supporter_similarity'].values
-        dataset.data[f'neutral_defeater_similarity_{model_class}'] = results_df['neutral_defeater_similarity'].values
-        dataset.data[f'supporter_defeater_similarity_{model_class}'] = results_df['supporter_defeater_similarity'].values
+            # 将结果添加到原始数据中
+            dataset.data[f'neutral_supporter_similarity_{model_class}'] = results_df['neutral_supporter_similarity'].values
+            dataset.data[f'neutral_defeater_similarity_{model_class}'] = results_df['neutral_defeater_similarity'].values
+            dataset.data[f'supporter_defeater_similarity_{model_class}'] = results_df['supporter_defeater_similarity'].values
 
-        # 保存更新的数据
-        output_dir = '/mnt/lia/scratch/wenqliu/evaluation/existing_models/'
-        os.makedirs(output_dir, exist_ok=True)
-        output_file_path = os.path.join(output_dir, f'{model_class}_results.jsonl')
-        dataset.data.to_json(output_file_path, orient='records', lines=True)
-        print(f"Results for {model_class} model have been saved to: {output_file_path}")
+            # 保存更新的数据
+            output_dir = '/mnt/lia/scratch/wenqliu/evaluation/existing_models/'
+            os.makedirs(output_dir, exist_ok=True)
+            output_file_path = os.path.join(output_dir, f'{model_class}_results.jsonl')
+            dataset.data.to_json(output_file_path, orient='records', lines=True)
+            print(f"Results for {model_class} model have been saved to: {output_file_path}")
 
-        # 计算指标：DCF、DOW 等
-        metrics_calculator = Metrics(
-            op_sd=dataset.data[f'neutral_supporter_similarity_{model_class}'].values,
-            op_sn=dataset.data[f'neutral_defeater_similarity_{model_class}'].values,
-            op_dn=dataset.data[f'supporter_defeater_similarity_{model_class}'].values
-        )
+            # 计算指标：DCF、DOW 等
+            metrics_calculator = Metrics(
+                op_sd=dataset.data[f'neutral_supporter_similarity_{model_class}'].values,
+                op_sn=dataset.data[f'neutral_defeater_similarity_{model_class}'].values,
+                op_dn=dataset.data[f'supporter_defeater_similarity_{model_class}'].values
+            )
 
-        dcf_value = metrics_calculator.DCF()
-        dcf_positive_value = metrics_calculator.DCF_positive()
-        dcf_negative_value = metrics_calculator.DCF_negative()
-        dow_value = metrics_calculator.DOW()
-        or_value = metrics_calculator.OR()
+            dcf_value = metrics_calculator.DCF()
+            dcf_positive_value = metrics_calculator.DCF_positive()
+            dcf_negative_value = metrics_calculator.DCF_negative()
+            dow_value = metrics_calculator.DOW()
+            or_value = metrics_calculator.OR()
 
-        # 输出计算结果
-        print(f"{model_class} DCF: {dcf_value:.4f}")
-        print(f"{model_class} DCF_positive: {dcf_positive_value:.4f}")
-        print(f"{model_class} DCF_negative: {dcf_negative_value:.4f}")
-        print(f"{model_class} DOW: {dow_value:.4f}")
-        print(f"{model_class} OR: {or_value:.4f}")
-        print("\n" + "="*40 + "\n")  # 分隔每个模型的结果
+            # 输出计算结果
+            print(f"{model_class} DCF: {dcf_value:.4f}")
+            print(f"{model_class} DCF_positive: {dcf_positive_value:.4f}")
+            print(f"{model_class} DCF_negative: {dcf_negative_value:.4f}")
+            print(f"{model_class} DOW: {dow_value:.4f}")
+            print(f"{model_class} OR: {or_value:.4f}")
+            print("\n" + "="*40 + "\n")  # 分隔每个模型的结果
+
+        except Exception as e:
+            print(f"在使用模型 {model_class} 时发生错误: {e}")
+            print("\n" + "="*40 + "\n")  # 分隔每个模型的结果
 
 if __name__ == "__main__":
     main()
