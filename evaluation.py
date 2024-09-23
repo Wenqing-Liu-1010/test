@@ -64,7 +64,7 @@ class TextSimilarity:
             if model_name is None:
                 raise ValueError("model_name cannot be None")
             self.model = AnglE.from_pretrained(model_name, pooling_strategy=pooling_strategy).cuda()
-            self.model.eval()
+
 
         def encode_texts(self, texts):
             return self.model.encode(texts)
@@ -73,7 +73,7 @@ class TextSimilarity:
         def __init__(self, model_name='princeton-nlp/sup-simcse-bert-base-uncased'):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModel.from_pretrained(model_name).cuda()
-            self.model.eval()
+
 
         def encode_texts(self, texts, batch_size=64):
             embeddings = []
@@ -88,7 +88,7 @@ class TextSimilarity:
     class SBERTModel:
         def __init__(self, model_name='all-MiniLM-L6-v2'):
             self.model = SentenceTransformer(model_name).to('cuda')
-            self.model.eval()
+
 
         def encode_texts(self, texts, batch_size=64):
             embeddings = self.model.encode(texts, batch_size=batch_size, convert_to_tensor=True, show_progress_bar=False)
@@ -104,7 +104,7 @@ class TextSimilarity:
                 torch_dtype=torch.float16,
                 offload_dir='path/to/offload_dir'
             ).cuda()
-            self.model.eval()
+
 
         def encode_texts(self, texts):
             doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompt.A)
@@ -129,7 +129,6 @@ class TextSimilarity:
         def __init__(self, model_name='shibing624/text2vec-base-multilingual'):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=True)
             self.model = AutoModel.from_pretrained(model_name).cuda()
-            self.model.eval()
 
         def encode_texts(self, texts, batch_size=64):
             embeddings = []
