@@ -257,7 +257,7 @@ def main():
         #('llm_7B', None),  # LLM does not require a model name
         ('llm_13B', None),  # LLM does not require a model name
         #('use', None),
-        #('cosent', 'shibing624/text2vec-base-multilingual'),
+        ('cosent', 'shibing624/text2vec-base-multilingual'),
     ]
 
     # 遍历每个模型，计算相似度
