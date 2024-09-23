@@ -2,12 +2,15 @@ import torch
 from angle_emb import AnglE, Prompts
 from angle_emb.utils import cosine_similarity
 
+# 检查 GPU 是否可用
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # 加载模型
 angle = AnglE.from_pretrained('NousResearch/Llama-2-7b-hf',
                               pretrained_lora_path='SeanLee97/angle-llama-7b-nli-v2',
                               pooling_strategy='last',
                               is_llm=True,
-                              torch_dtype=torch.float16).cuda()
+                              torch_dtype=torch.float16).to(device)  # 移至 GPU
 
 # 打印所有预定义提示
 print('All predefined prompts:', Prompts.list_prompts())
@@ -22,4 +25,5 @@ doc_vecs = angle.encode([
 # 计算余弦相似度
 for i, dv1 in enumerate(doc_vecs):
     for dv2 in doc_vecs[i+1:]:
-        print(cosine_similarity(dv1, dv2))
+        similarity = cosine_similarity(dv1.to(device), dv2.to(device))  # 确保在 GPU 上计算相似度
+        print(similarity)
