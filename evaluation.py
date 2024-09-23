@@ -59,6 +59,14 @@ class TextSimilarityDataset(Dataset):
 
 # 定义 TextSimilarity 类
 class TextSimilarity:
+    class GTEModel:
+        def __init__(self, model_name='Alibaba-NLP/gte-Qwen1.5-7B-instruct'):
+            self.model = SentenceTransformer(model_name, trust_remote_code=True).cuda()
+            self.model.max_seq_length = 8192  # Set maximum sequence length
+
+        def encode_texts(self, texts):
+            return self.model.encode(texts, convert_to_tensor=True).cuda()  # Ensure output is on CUDA
+    
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
             if model_name is None:
@@ -141,8 +149,10 @@ class TextSimilarity:
                 embeddings.append(doc_vecs)
             return torch.cat(embeddings)
 
-    def __init__(self, model_class='simcse', model_name=None):
-        if model_class == 'aoe':
+    def __init__(self, model_class='gte', model_name=None):
+        if model_class == 'gte':
+            self.model = self.GTEModel()
+        elif model_class == 'aoe':
             self.model = self.AOEModel(model_name=model_name)
         elif model_class == 'simcse':
             self.model = self.SimCSEModel(model_name=model_name)
@@ -155,7 +165,8 @@ class TextSimilarity:
         elif model_class == 'cosent':
             self.model = self.CoSENTModel(model_name=model_name)
         else:
-            raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm', 'use', or 'cosent'.")
+            raise ValueError("Invalid model_class. Choose 'gte', 'aoe', 'simcse', 'sbert', 'llm', 'use', or 'cosent'.")
+
 
     def calculate_cosine_similarity(self, vec1, vec2):
         return torch.cosine_similarity(vec1, vec2, dim=1)
@@ -212,13 +223,13 @@ def main():
 
     # 定义模型及其对应的名称
     models = [
+        ('gte', None),
+        ('aoe', 'WhereIsAI/UAE-Large-V1'),
         #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
-        ('use', None),
-        #('cosent', 'shibing624/text2vec-base-multilingual'),
-        # 添加更多模型，如下所示：
-        # ('aoe', 'WhereIsAI/UAE-Large-V1'),
         #('sbert', 'all-MiniLM-L6-v2'),
-        #('llm', None),  # LLM 不需要模型名称
+        #('llm', None),  # LLM does not require a model name
+        #('use', None),
+        #('cosent', 'shibing624/text2vec-base-multilingual'),
     ]
 
     # 遍历每个模型，计算相似度
