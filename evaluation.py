@@ -7,10 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
-import nltk
 
-# 确保 NLTK 分词器可用
-nltk.download('punkt')
 
 # 定义 Metrics 类
 class Metrics:
