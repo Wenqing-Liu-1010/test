@@ -233,7 +233,7 @@ class TextSimilarity:
 # 定义主函数
 def main():
     # 加载数据集
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl'
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/test_processed_filtered_score_gt_07.jsonl'
     if not os.path.exists(file_path):
         print(f"数据文件未找到，请确保路径正确：{file_path}")
         return
@@ -251,13 +251,13 @@ def main():
     # 定义模型及其对应的名称
     models = [
         #('gte', None),
-        #('aoe', 'WhereIsAI/UAE-Large-V1'),
-        #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
-        #('sbert', 'all-MiniLM-L6-v2'),
-        #('llm_7B', None),  # LLM does not require a model name
+        ('aoe', 'WhereIsAI/UAE-Large-V1'),
+        ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
+        ('sbert', 'all-MiniLM-L6-v2'),
+        ('llm_7B', None),  # LLM does not require a model name
         ('llm_13B', None),  # LLM does not require a model name
-        #('use', None),
         ('cosent', 'shibing624/text2vec-base-multilingual'),
+        ('use', None),
     ]
 
     # 遍历每个模型，计算相似度
@@ -273,7 +273,7 @@ def main():
             dataset.data[f'supporter_defeater_similarity_{model_class}'] = results_df['supporter_defeater_similarity'].values
 
             # 保存更新的数据
-            output_dir = '/mnt/lia/scratch/wenqliu/evaluation/existing_models/'
+            output_dir = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/existing_models/'
             os.makedirs(output_dir, exist_ok=True)
             output_file_path = os.path.join(output_dir, f'{model_class}_results.jsonl')
             dataset.data.to_json(output_file_path, orient='records', lines=True)
