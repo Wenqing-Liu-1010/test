@@ -180,7 +180,7 @@ def main():
     models = [
         #('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
-        ('sbert', 'all-MiniLM-L6-v2'),
+        #('sbert', 'all-MiniLM-L6-v2'),
         #('llm', None),  # LLM 不需要模型名称
         ('use', None),
         ("cosent",'shibing624/text2vec-base-multilingual')# USE 不需要模型名称
