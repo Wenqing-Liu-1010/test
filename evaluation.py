@@ -1,13 +1,14 @@
-import torch
-import tensorflow_text
-from angle_emb import AnglE, Prompts
-from angle_emb.utils import cosine_similarity
-import pandas as pd
+import os
 import numpy as np
+import torch
+import torch.nn as nn
+import pandas as pd
+from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
 
+# 定义 Metrics 类
 class Metrics:
     def __init__(self, op_sd, op_sn, op_dn):
         self.op_sd = op_sd
@@ -36,12 +37,32 @@ class Metrics:
     def OR(self):
         OR_value = self.op_sd / np.maximum(self.op_sn, self.op_dn)
         return OR_value.mean()
+
+# 定义自定义 Dataset
+class TextSimilarityDataset(Dataset):
+    def __init__(self, file_path):
+        self.data = pd.read_json(file_path, lines=True)
+        self.supporters = (self.data['context_text'] + " " + self.data['supporter_text']).tolist()
+        self.defeaters = (self.data['context_text'] + " " + self.data['defeater_text']).tolist()
+        self.neutrals = (self.data['context_text'] + " " + self.data['neutral_text']).tolist()
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        supporter = self.supporters[idx]
+        defeater = self.defeaters[idx]
+        neutral = self.neutrals[idx]
+        return supporter, defeater, neutral
+
+# 定义 TextSimilarity 类
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
             if model_name is None:
                 raise ValueError("model_name cannot be None")
             self.model = AnglE.from_pretrained(model_name, pooling_strategy=pooling_strategy).cuda()
+            self.model.eval()
 
         def encode_texts(self, texts):
             return self.model.encode(texts)
@@ -50,20 +71,26 @@ class TextSimilarity:
         def __init__(self, model_name='princeton-nlp/sup-simcse-bert-base-uncased'):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModel.from_pretrained(model_name).cuda()
+            self.model.eval()
 
-        def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to('cuda')
-            with torch.no_grad():
-                embeddings = self.model(**inputs, return_dict=True).pooler_output
-            return embeddings
+        def encode_texts(self, texts, batch_size=64):
+            embeddings = []
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i+batch_size]
+                inputs = self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt").to('cuda')
+                with torch.no_grad():
+                    outputs = self.model(**inputs, return_dict=True)
+                    embeddings.append(outputs.pooler_output.cpu())
+            return torch.cat(embeddings)
 
     class SBERTModel:
         def __init__(self, model_name='all-MiniLM-L6-v2'):
-            self.model = SentenceTransformer(model_name)
+            self.model = SentenceTransformer(model_name).to('cuda')
+            self.model.eval()
 
-        def encode_texts(self, texts):
-            embeddings = self.model.encode(texts)
-            return torch.tensor(embeddings).to('cuda')  # Convert to PyTorch tensor and move to GPU
+        def encode_texts(self, texts, batch_size=64):
+            embeddings = self.model.encode(texts, batch_size=batch_size, convert_to_tensor=True, show_progress_bar=False)
+            return embeddings.cpu()
 
     class LLMModel:
         def __init__(self):
@@ -75,34 +102,45 @@ class TextSimilarity:
                 torch_dtype=torch.float16,
                 offload_dir='path/to/offload_dir'
             ).cuda()
+            self.model.eval()
 
         def encode_texts(self, texts):
             prompts = [Prompts.A] * len(texts)  # Ensure Prompts class is correctly defined
             doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompts)
-            return doc_vecs
+            return torch.tensor(doc_vecs).to('cuda')
 
     class USEModel:
         def __init__(self):
             # Load Universal Sentence Encoder model
             self.embedder = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
+            # TensorFlow Hub models run on CPU; to leverage GPU, consider using a different model
 
-        def encode_texts(self, texts):
-            embeddings = self.embedder(texts).numpy()  # Convert TensorFlow tensor to NumPy array
-            return torch.tensor(embeddings).to('cuda')  # Convert to PyTorch tensor and move to GPU
+        def encode_texts(self, texts, batch_size=128):
+            embeddings = []
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i+batch_size]
+                embeddings_tf = self.embedder(batch)
+                embeddings.append(torch.tensor(embeddings_tf.numpy()))
+            return torch.cat(embeddings).to('cuda') if torch.cuda.is_available() else torch.cat(embeddings)
 
     class CoSENTModel:
         def __init__(self, model_name='shibing624/text2vec-base-multilingual'):
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=True)  # Set tokenizer
-            self.model = AutoModel.from_pretrained(model_name).cuda()  # Ensure the model is on GPU
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=True)
+            self.model = AutoModel.from_pretrained(model_name).cuda()
+            self.model.eval()
 
-        def encode_texts(self, texts):
-            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-            inputs = {k: v.cuda() for k, v in inputs.items()}  # Move input tensors to GPU
-            with torch.no_grad():
-                doc_vecs = self.model(**inputs).last_hidden_state.mean(dim=1)
-            return doc_vecs
+        def encode_texts(self, texts, batch_size=64):
+            embeddings = []
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i+batch_size]
+                inputs = self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt").to('cuda')
+                with torch.no_grad():
+                    outputs = self.model(**inputs)
+                    doc_vecs = outputs.last_hidden_state.mean(dim=1).cpu()
+                embeddings.append(doc_vecs)
+            return torch.cat(embeddings)
 
-    def __init__(self, model_class='aoe', model_name=None):
+    def __init__(self, model_class='simcse', model_name=None):
         if model_class == 'aoe':
             self.model = self.AOEModel(model_name=model_name)
         elif model_class == 'simcse':
@@ -118,90 +156,92 @@ class TextSimilarity:
         else:
             raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm', 'use', or 'cosent'.")
 
-
     def calculate_cosine_similarity(self, vec1, vec2):
-        # 确保输入是 PyTorch 张量，并在 GPU 上
-        if isinstance(vec1, np.ndarray):
-            vec1 = torch.tensor(vec1).to('cuda')
-        if isinstance(vec2, np.ndarray):
-            vec2 = torch.tensor(vec2).to('cuda')
+        return torch.cosine_similarity(vec1, vec2, dim=1)
 
-        # 计算点积
-        dot_product = torch.dot(vec1, vec2)
-        # 计算范数
-        norm_vec1 = torch.norm(vec1)
-        norm_vec2 = torch.norm(vec2)
-
-        # 计算余弦相似度，避免除零错误
-        similarity = dot_product / (norm_vec1 * norm_vec2 + 1e-8)
-        return similarity
-
-
-    def __call__(self, data, batch_size=2048):
+    def __call__(self, dataloader):
         results = []
-        for start in range(0, len(data), batch_size):
-            end = min(start + batch_size, len(data))
-            batch = data.iloc[start:end]
+        for batch in dataloader:
+            supporters, defeaters, neutrals = batch
+            texts = supporters + defeaters + neutrals
+            doc_vecs = self.model.encode_texts(texts)
 
-            for index in range(len(batch)):
-                row = batch.iloc[index]
-                context = row['context_text']
-                supporter = context + " " + row['supporter_text']
-                defeater = context + " " + row['defeater_text']
-                neutral = context + " " + row['neutral_text']
+            n = len(supporters)
+            supporters_vecs = doc_vecs[:n]
+            defeaters_vecs = doc_vecs[n:2*n]
+            neutrals_vecs = doc_vecs[2*n:3*n]
 
-                texts = [supporter, defeater, neutral]
-                doc_vecs = self.model.encode_texts(texts)
+            similarity_neutral_supporter = self.calculate_cosine_similarity(neutrals_vecs, supporters_vecs)
+            similarity_neutral_defeater = self.calculate_cosine_similarity(neutrals_vecs, defeaters_vecs)
+            similarity_supporter_defeater = self.calculate_cosine_similarity(supporters_vecs, defeaters_vecs)
 
-                # Calculate similarities
-                similarity_neutral_supporter = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[0])
-                similarity_neutral_defeater = self.calculate_cosine_similarity(doc_vecs[2], doc_vecs[1])
-                similarity_supporter_defeater = self.calculate_cosine_similarity(doc_vecs[0], doc_vecs[1])
-
-                results.append({
-                    "neutral_supporter_similarity": similarity_neutral_supporter.item() if hasattr(similarity_neutral_supporter, 'item') else similarity_neutral_supporter,
-                    "neutral_defeater_similarity": similarity_neutral_defeater.item() if hasattr(similarity_neutral_defeater, 'item') else similarity_neutral_defeater,
-                    "supporter_defeater_similarity": similarity_supporter_defeater.item() if hasattr(similarity_supporter_defeater, 'item') else similarity_supporter_defeater,
-                })
+            results.extend([
+                {
+                    "neutral_supporter_similarity": sim_neut_sup.item(),
+                    "neutral_defeater_similarity": sim_neut_def.item(),
+                    "supporter_defeater_similarity": sim_sup_def.item(),
+                }
+                for sim_neut_sup, sim_neut_def, sim_sup_def in zip(
+                    similarity_neutral_supporter,
+                    similarity_neutral_defeater,
+                    similarity_supporter_defeater
+                )
+            ])
 
         results_df = pd.DataFrame(results)
+        return results_df
 
-        for column in results_df.columns:
-            data[column] = results_df[column].values
-
-        return data
-
+# 定义主函数
 def main():
     # 加载数据集
     file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl'
-    data = pd.read_json(file_path, lines=True)
+    if not os.path.exists(file_path):
+        print(f"数据文件未找到，请确保路径正确：{file_path}")
+        return
+    dataset = TextSimilarityDataset(file_path)
+
+    # 定义 DataLoader
+    dataloader = DataLoader(
+        dataset,
+        batch_size=128,       # 根据您的 GPU 内存调整批次大小
+        shuffle=False,        # 如果需要打乱数据，可以设置为 True
+        num_workers=4,        # 根据您的 CPU 核心数调整
+        pin_memory=True if torch.cuda.is_available() else False  # 如果使用 GPU，加快数据传输速度
+    )
 
     # 定义模型及其对应的名称
     models = [
-        #('aoe', 'WhereIsAI/UAE-Large-V1'),
-        ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
-        #('sbert', 'all-MiniLM-L6-v2'),
-        #('llm', None),  # LLM 不需要模型名称
+       #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('use', None),
-        ("cosent",'shibing624/text2vec-base-multilingual')# USE 不需要模型名称
+        ('cosent', 'shibing624/text2vec-base-multilingual'),
+        # ('aoe', 'WhereIsAI/UAE-Large-V1'),
+        ('sbert', 'all-MiniLM-L6-v2'),
+        # ('llm', None),  # LLM 不需要模型名称
     ]
 
     # 遍历每个模型，计算相似度
     for model_class, model_name in models:
         print(f"Using {model_class} model...")
         similarity_calculator = TextSimilarity(model_class=model_class, model_name=model_name)
-        updated_data = similarity_calculator(data, batch_size=2048)
+        results_df = similarity_calculator(dataloader)
+
+        # 将结果添加到原始数据中
+        dataset.data[f'neutral_supporter_similarity_{model_class}'] = results_df['neutral_supporter_similarity'].values
+        dataset.data[f'neutral_defeater_similarity_{model_class}'] = results_df['neutral_defeater_similarity'].values
+        dataset.data[f'supporter_defeater_similarity_{model_class}'] = results_df['supporter_defeater_similarity'].values
 
         # 保存更新的数据
-        output_file_path = f'/mnt/lia/scratch/wenqliu/evaluation/existing_models/{model_class}_results.jsonl'
-        updated_data.to_json(output_file_path, orient='records', lines=True)
+        output_dir = '/mnt/lia/scratch/wenqliu/evaluation/existing_models/'
+        os.makedirs(output_dir, exist_ok=True)
+        output_file_path = os.path.join(output_dir, f'{model_class}_results.jsonl')
+        dataset.data.to_json(output_file_path, orient='records', lines=True)
         print(f"Results for {model_class} model have been saved to: {output_file_path}")
 
         # 计算指标：DCF、DOW 等
         metrics_calculator = Metrics(
-            op_sd=updated_data['neutral_supporter_similarity'].values,
-            op_sn=updated_data['neutral_defeater_similarity'].values,
-            op_dn=updated_data['supporter_defeater_similarity'].values
+            op_sd=dataset.data[f'neutral_supporter_similarity_{model_class}'].values,
+            op_sn=dataset.data[f'neutral_defeater_similarity_{model_class}'].values,
+            op_dn=dataset.data[f'supporter_defeater_similarity_{model_class}'].values
         )
 
         dcf_value = metrics_calculator.DCF()
