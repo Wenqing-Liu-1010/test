@@ -169,6 +169,11 @@ class TextSimilarity:
 
 
     def calculate_cosine_similarity(self, vec1, vec2):
+        if isinstance(vec1, np.ndarray):
+            vec1 = torch.tensor(vec1).to('cuda')
+        if isinstance(vec2, np.ndarray):
+            vec2 = torch.tensor(vec2).to('cuda')
+
         return torch.cosine_similarity(vec1, vec2, dim=1)
 
     def __call__(self, dataloader):
