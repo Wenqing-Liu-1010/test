@@ -14,22 +14,15 @@ angle = AnglE.from_pretrained(
 # 打印所有预定义提示
 print('All predefined prompts:', Prompts.list_prompts())
 
-# 编码文本，不提供 prompt
+# 编码文本，传递 prompt
 doc_vecs = angle.encode([
-    'The weather is great!',
-    'The weather is very good!',
-    'I am going to bed'
-], prompt=None)  # 设置为 None
+    {'text': 'The weather is great!'},
+    {'text': 'The weather is very good!'},
+    {'text': 'I am going to bed'}
+], prompt=Prompts.A)  # 使用预定义的 prompt
 
 # 计算余弦相似度
-for i, dv1 in enumerate(doc_vecs):
-    for dv2 in doc_vecs[i+1:]:
-        similarity = cosine_similarity(dv1, dv2)
-        print(f"Cosine similarity between doc {i} and doc {i+1}: {similarity.item():.4f}")
-
-    {'text': 'i am going to bed'}
-], prompt=Prompts.A)
-
-for i, dv1 in enumerate(doc_vecs):
-    for dv2 in doc_vecs[i+1:]:
-        print(cosine_similarity(dv1, dv2))
+for i in range(len(doc_vecs)):
+    for j in range(i + 1, len(doc_vecs)):
+        similarity = cosine_similarity(doc_vecs[i], doc_vecs[j])
+        print(f"Cosine similarity between doc {i} and doc {j}: {similarity.item():.4f}")
