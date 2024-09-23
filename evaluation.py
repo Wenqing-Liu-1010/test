@@ -159,7 +159,7 @@ class TextSimilarity:
 
 def main():
     # 加载数据集
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed.jsonl'
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl'
     data = pd.read_json(file_path, lines=True)
 
     # 定义模型及其对应的名称
