@@ -1,5 +1,6 @@
 import torch
-from angle_emb import AnglE
+import tensorflow_text
+from angle_emb import AnglE, Prompts
 from angle_emb.utils import cosine_similarity
 import pandas as pd
 import numpy as np
@@ -35,7 +36,6 @@ class Metrics:
     def OR(self):
         OR_value = self.op_sd / np.maximum(self.op_sn, self.op_dn)
         return OR_value.mean()
-
 class TextSimilarity:
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
@@ -62,7 +62,8 @@ class TextSimilarity:
             self.model = SentenceTransformer(model_name)
 
         def encode_texts(self, texts):
-            return self.model.encode(texts)
+            embeddings = self.model.encode(texts)
+            return torch.tensor(embeddings).to('cuda')  # Convert to PyTorch tensor and move to GPU
 
     class LLMModel:
         def __init__(self):
@@ -76,19 +77,30 @@ class TextSimilarity:
             ).cuda()
 
         def encode_texts(self, texts):
-            prompts = [Prompts.A] * len(texts)  # Ensure Prompts class is defined
+            prompts = [Prompts.A] * len(texts)  # Ensure Prompts class is correctly defined
             doc_vecs = self.model.encode([{'text': text} for text in texts], prompt=prompts)
             return doc_vecs
 
     class USEModel:
         def __init__(self):
-            # Load the Universal Sentence Encoder multilingual model
+            # Load Universal Sentence Encoder model
             self.embedder = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
 
         def encode_texts(self, texts):
-            # Encode sentences
-            embeddings = self.embedder(texts)
-            return embeddings
+            embeddings = self.embedder(texts).numpy()  # Convert TensorFlow tensor to NumPy array
+            return torch.tensor(embeddings).to('cuda')  # Convert to PyTorch tensor and move to GPU
+
+    class CoSENTModel:
+        def __init__(self, model_name='shibing624/text2vec-base-multilingual'):
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=True)  # Set tokenizer
+            self.model = AutoModel.from_pretrained(model_name).cuda()  # Ensure the model is on GPU
+
+        def encode_texts(self, texts):
+            inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+            inputs = {k: v.cuda() for k, v in inputs.items()}  # Move input tensors to GPU
+            with torch.no_grad():
+                doc_vecs = self.model(**inputs).last_hidden_state.mean(dim=1)
+            return doc_vecs
 
     def __init__(self, model_class='aoe', model_name=None):
         if model_class == 'aoe':
@@ -101,11 +113,15 @@ class TextSimilarity:
             self.model = self.LLMModel()
         elif model_class == 'use':
             self.model = self.USEModel()
+        elif model_class == 'cosent':
+            self.model = self.CoSENTModel(model_name=model_name)
         else:
-            raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm', or 'use'.")
+            raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm', 'use', or 'cosent'.")
+
 
     def calculate_cosine_similarity(self, vec1, vec2):
-        return cosine_similarity(vec1.cpu(), vec2.cpu())
+        return cosine_similarity(vec1.cpu(), vec2.cpu())  # 确保在CPU上计算相似度
+
 
     def __call__(self, data, batch_size=32):
         results = []
@@ -142,31 +158,32 @@ class TextSimilarity:
         return data
 
 def main():
-    # Load the dataset
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed_filtered.jsonl'
+    # 加载数据集
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/test_processed.jsonl'
     data = pd.read_json(file_path, lines=True)
 
-    # Define models and their corresponding names
+    # 定义模型及其对应的名称
     models = [
-        # ('aoe', 'WhereIsAI/UAE-Large-V1'),
+        #('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('sbert', 'all-MiniLM-L6-v2'),
-        ('llm', None),  # LLM does not require a model name
-        ('use', None)   # USE does not require a model name
+        #('llm', None),  # LLM 不需要模型名称
+        ('use', None),
+        ("cosent",'shibing624/text2vec-base-multilingual')# USE 不需要模型名称
     ]
 
-    # Iterate over each model to calculate similarities
+    # 遍历每个模型，计算相似度
     for model_class, model_name in models:
         print(f"Using {model_class} model...")
         similarity_calculator = TextSimilarity(model_class=model_class, model_name=model_name)
         updated_data = similarity_calculator(data, batch_size=2048)
 
-        # Save the updated data
+        # 保存更新的数据
         output_file_path = f'/mnt/lia/scratch/wenqliu/evaluation/existing_models/{model_class}_results.jsonl'
         updated_data.to_json(output_file_path, orient='records', lines=True)
         print(f"Results for {model_class} model have been saved to: {output_file_path}")
 
-        # Calculate metrics: DCF, DOW, etc.
+        # 计算指标：DCF、DOW 等
         metrics_calculator = Metrics(
             op_sd=updated_data['neutral_supporter_similarity'].values,
             op_sn=updated_data['neutral_defeater_similarity'].values,
@@ -179,13 +196,13 @@ def main():
         dow_value = metrics_calculator.DOW()
         or_value = metrics_calculator.OR()
 
-        # Print the calculated metrics
+        # 输出计算结果
         print(f"{model_class} DCF: {dcf_value:.4f}")
         print(f"{model_class} DCF_positive: {dcf_positive_value:.4f}")
         print(f"{model_class} DCF_negative: {dcf_negative_value:.4f}")
         print(f"{model_class} DOW: {dow_value:.4f}")
         print(f"{model_class} OR: {or_value:.4f}")
-        print("\n" + "="*40 + "\n")  # Separator for each model's results
+        print("\n" + "="*40 + "\n")  # 分隔每个模型的结果
 
 if __name__ == "__main__":
     main()
