@@ -215,11 +215,11 @@ def main():
     models = [
         #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         #('use', None),
-        ('cosent', 'shibing624/text2vec-base-multilingual'),
+        #('cosent', 'shibing624/text2vec-base-multilingual'),
         # 添加更多模型，如下所示：
         # ('aoe', 'WhereIsAI/UAE-Large-V1'),
-        ('sbert', 'all-MiniLM-L6-v2'),
-        # ('llm', None),  # LLM 不需要模型名称
+        #('sbert', 'all-MiniLM-L6-v2'),
+        ('llm', None),  # LLM 不需要模型名称
     ]
 
     # 遍历每个模型，计算相似度
