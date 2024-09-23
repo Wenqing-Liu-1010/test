@@ -120,10 +120,24 @@ class TextSimilarity:
 
 
     def calculate_cosine_similarity(self, vec1, vec2):
-        return cosine_similarity(vec1.cpu(), vec2.cpu())  # 确保在CPU上计算相似度
+        # 确保输入是 PyTorch 张量，并在 GPU 上
+        if isinstance(vec1, np.ndarray):
+            vec1 = torch.tensor(vec1).to('cuda')
+        if isinstance(vec2, np.ndarray):
+            vec2 = torch.tensor(vec2).to('cuda')
+
+        # 计算点积
+        dot_product = torch.dot(vec1, vec2)
+        # 计算范数
+        norm_vec1 = torch.norm(vec1)
+        norm_vec2 = torch.norm(vec2)
+
+        # 计算余弦相似度，避免除零错误
+        similarity = dot_product / (norm_vec1 * norm_vec2 + 1e-8)
+        return similarity
 
 
-    def __call__(self, data, batch_size=32):
+    def __call__(self, data, batch_size=2048):
         results = []
         for start in range(0, len(data), batch_size):
             end = min(start + batch_size, len(data))
