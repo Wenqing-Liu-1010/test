@@ -3,7 +3,7 @@ import os
 import torch
 
 # Dataset names
-splits = ['train', 'dev', 'test']  # Modify based on actual dataset names
+splits = ['train', 'test']  # Modify based on actual dataset names
 #splits = ['test']  # Modify based on actual dataset names
 # Ensure the device is set to CUDA if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
