@@ -171,8 +171,8 @@ def main():
     # 定义模型及其对应的名称
     models = [
         ('bert', 'bert-base-uncased'),
-        ('aoe', 'WhereIsAI/UAE-Large-V1'),
-        ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
+        #('aoe', 'WhereIsAI/UAE-Large-V1'),
+        #('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
     ]
 
     # 遍历每个模型，计算相似度
