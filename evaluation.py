@@ -61,15 +61,7 @@ class TextSimilarityDataset(Dataset):
         return supporter, defeater, neutral
 
 # 定义 TextSimilarity 类
-class TextSimilarity:
-    class GTEModel:
-        def __init__(self, model_name='Alibaba-NLP/gte-Qwen1.5-7B-instruct'):
-            self.model = SentenceTransformer(model_name, trust_remote_code=True).cuda()
-            self.model.max_seq_length = 8192  # Set maximum sequence length
-
-        def encode_texts(self, texts):
-            return self.model.encode(texts, convert_to_tensor=True).cuda()  # Ensure output is on CUDA
-    
+class TextSimilarity:    
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
             if model_name is None:
@@ -141,7 +133,7 @@ class TextSimilarity:
     class USEModel:
         def __init__(self):
             import tensorflow as tf
-            import tensorflow_text  # 确保导入顺序正确
+            import tensorflow_text
             self.embedder = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
             # TensorFlow Hub models run on CPU; to leverage GPU, consider using a different model
 
