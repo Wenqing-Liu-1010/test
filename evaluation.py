@@ -162,9 +162,7 @@ class TextSimilarity:
             return torch.cat(embeddings)
 
     def __init__(self, model_class='gte', model_name=None):
-        if model_class == 'gte':
-            self.model = self.GTEModel()
-        elif model_class == 'aoe':
+        if model_class == 'aoe':
             self.model = self.AOEModel(model_name=model_name)
         elif model_class == 'simcse':
             self.model = self.SimCSEModel(model_name=model_name)
@@ -179,7 +177,7 @@ class TextSimilarity:
         elif model_class == 'cosent':
             self.model = self.CoSENTModel(model_name=model_name)
         else:
-            raise ValueError("Invalid model_class. Choose 'gte', 'aoe', 'simcse', 'sbert', 'llm_7B', 'llm_13B','use', or 'cosent'.")
+            raise ValueError("Invalid model_class. Choose 'aoe', 'simcse', 'sbert', 'llm_7B', 'llm_13B','use', or 'cosent'.")
 
 
     def calculate_cosine_similarity(self, vec1, vec2):
@@ -242,7 +240,6 @@ def main():
 
     # 定义模型及其对应的名称
     models = [
-        #('gte', None),
         ('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('sbert', 'all-MiniLM-L6-v2'),
