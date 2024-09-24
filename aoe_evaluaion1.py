@@ -15,7 +15,7 @@ models = [
 ]
 # 遍历每个模型
 for model_class in models:
-    file_path = f'/mnt/lia/scratch/wenqliu/evaluation/existing_models/{model_class}_results.jsonl'
+    file_path = f'/mnt/lia/scratch/wenqliu/evaluation/delta_causal/existing_models/{model_class}_results.jsonl'
     
     if not os.path.exists(file_path):
         print(f"数据文件未找到，请确保路径正确：{file_path}")
