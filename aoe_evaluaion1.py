@@ -8,11 +8,8 @@ login("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")
 
 # 定义要加载的模型列表
 # models = [
-#     'aoe', 'cosent', 'llm_13B', 'llm', 'sbert', 'simcse', 'use'
+#     'aoe', 'cosent', 'llm_13B', 'llm', 'sbert', 'use'
 # ]
-models = [
-    'use'
-]
 # 遍历每个模型
 for model_class in models:
     file_path = f'/mnt/lia/scratch/wenqliu/evaluation/delta_causal/existing_models/{model_class}_results.jsonl'
