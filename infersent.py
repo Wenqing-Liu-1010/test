@@ -42,7 +42,7 @@ class InferSent(nn.Module):
 
 # 设定模型参数
 V = 2
-MODEL_PATH = 'encoder/infersent%s.pkl' % V
+MODEL_PATH = 'encoder/infersent2.pkl'
 params_model = {
     'bsize': 64,
     'word_emb_dim': 300,  # 嵌入维度
