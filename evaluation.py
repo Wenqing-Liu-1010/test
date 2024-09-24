@@ -233,7 +233,7 @@ class TextSimilarity:
 # 定义主函数
 def main():
     # 加载数据集
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/test_processed_filtered_score_gt_07.jsonl'
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/test_processed_filtered.jsonl'
     if not os.path.exists(file_path):
         print(f"数据文件未找到，请确保路径正确：{file_path}")
         return
@@ -254,9 +254,9 @@ def main():
         ('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('sbert', 'all-MiniLM-L6-v2'),
+        ('cosent', 'shibing624/text2vec-base-multilingual'),
         ('llm_7B', None),  # LLM does not require a model name
         ('llm_13B', None),  # LLM does not require a model name
-        ('cosent', 'shibing624/text2vec-base-multilingual'),
         ('use', None),
     ]
 
@@ -275,7 +275,7 @@ def main():
             # 保存更新的数据
             output_dir = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/existing_models/'
             os.makedirs(output_dir, exist_ok=True)
-            output_file_path = os.path.join(output_dir, f'{model_class}_results.jsonl')
+            output_file_path = os.path.join(output_dir, f'{model_class}_results_filtered.jsonl')
             dataset.data.to_json(output_file_path, orient='records', lines=True)
             print(f"Results for {model_class} model have been saved to: {output_file_path}")
 
