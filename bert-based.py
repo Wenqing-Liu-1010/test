@@ -66,15 +66,12 @@ class TextSimilarity:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModel.from_pretrained(model_name).cuda()
 
-        def encode_texts(self, texts, batch_size=64):
-            embeddings = []
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i+batch_size]
-                inputs = self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt").to('cuda')
-                with torch.no_grad():
-                    outputs = self.model(**inputs)
-                    embeddings.append(outputs.last_hidden_state.mean(dim=1).cpu())
-            return torch.cat(embeddings)
+        def encode_texts(self, texts):
+            encoded_input = self.tokenizer(texts, padding=True, truncation=True, return_tensors='pt').to('cuda')
+            with torch.no_grad():
+                output = self.model(**encoded_input)
+            embeddings = output.last_hidden_state[:, 0, :]
+            return embeddings
 
     class AOEModel:
         def __init__(self, model_name='WhereIsAI/UAE-Large-V1', pooling_strategy='cls'):
