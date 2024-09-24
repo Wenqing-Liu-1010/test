@@ -281,7 +281,7 @@ def main():
 
             # 计算指标：DCF、DOW 等
             metrics_calculator = Metrics(
-                op_sd=dataset.data[f'supporter_defeater_similarity__{model_class}'].values,
+                op_sd=dataset.data[f'supporter_defeater_similarity_{model_class}'].values,
                 op_sn=dataset.data[f'neutral_supporter_similarity_{model_class}'].values,
                 op_dn=dataset.data[f'neutral_defeater_similarity_{model_class}'].values
             )
