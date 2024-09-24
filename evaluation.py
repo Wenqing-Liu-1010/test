@@ -16,9 +16,9 @@ login("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")
 # 定义 Metrics 类
 class Metrics:
     def __init__(self, op_sd, op_sn, op_dn):
-        self.op_sd = op_sd
-        self.op_sn = op_sn
-        self.op_dn = op_dn
+        self.op_sd = （1-op_sd)/2
+        self.op_sn = (1-op_sn)/2
+        self.op_dn = (1-op_dn)/2
 
     def DCF(self):
         N = len(self.op_sd)
