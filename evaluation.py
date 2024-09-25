@@ -8,9 +8,9 @@ from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import tensorflow_hub as hub
 from angle_emb import AnglE, Prompts
-from huggingface_hub import login
+# from huggingface_hub import login
 
-login("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")
+# login("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")
 
 
 # 定义 Metrics 类
@@ -223,7 +223,7 @@ class TextSimilarity:
 # 定义主函数
 def main():
     # 加载数据集
-    file_path = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/test_processed_filtered.jsonl'
+    file_path = '/mnt/lia/scratch/wenqliu/evaluation/perspectrum/test_processed_filtered.jsonl'
     if not os.path.exists(file_path):
         print(f"数据文件未找到，请确保路径正确：{file_path}")
         return
@@ -243,10 +243,10 @@ def main():
         ('aoe', 'WhereIsAI/UAE-Large-V1'),
         ('simcse', 'princeton-nlp/sup-simcse-bert-base-uncased'),
         ('sbert', 'all-MiniLM-L6-v2'),
-        ('cosent', 'shibing624/text2vec-base-multilingual'),
         ('llm_7B', None),  # LLM does not require a model name
         ('llm_13B', None),  # LLM does not require a model name
         ('use', None),
+        ('cosent', 'shibing624/text2vec-base-multilingual'),
     ]
 
     # 遍历每个模型，计算相似度
