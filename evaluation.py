@@ -262,7 +262,7 @@ def main():
             dataset.data[f'supporter_defeater_similarity_{model_class}'] = results_df['supporter_defeater_similarity'].values
 
             # 保存更新的数据
-            output_dir = '/mnt/lia/scratch/wenqliu/evaluation/delta_causal/existing_models/'
+            output_dir = '/mnt/lia/scratch/wenqliu/evaluation/perspectrum/existing_models/'
             os.makedirs(output_dir, exist_ok=True)
             output_file_path = os.path.join(output_dir, f'{model_class}_results_filtered.jsonl')
             dataset.data.to_json(output_file_path, orient='records', lines=True)
