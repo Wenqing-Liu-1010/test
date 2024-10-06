@@ -7,7 +7,7 @@ def main():
     # 遍历每个数据集并打印数据条数
     for s in split:
         # 构建文件路径
-        file_path = f"/mnt/lia/scratch/wenqliu/evaluation/delta_causal/regenerate/{split}.jsonl"
+        file_path = f"/mnt/lia/scratch/wenqliu/evaluation/delta_causal/regenerate/s.jsonl"
         
         # 读取 JSONL 文件
         df = pd.read_json(file_path, lines=True)
